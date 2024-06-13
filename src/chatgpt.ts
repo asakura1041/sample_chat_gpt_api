@@ -22,7 +22,7 @@ const data = {
         {
           "name": "世界遺産の名前",
           "registered_year": 登録年,
-          "description": "説明"
+          "description": "説明" // どこにあるか、歴史的背景や何が魅力かなどを詳細に説明
         },
         ...
       ]
@@ -51,45 +51,43 @@ interface WorldHeritage {
   description: string;
 }
 
-async function callChatGPT() {
+const parseJSONResponse = (response: string): WorldHeritage[] => {
+  try {
+    const cleanedResponse = response.replace(/```json|```/g, '').trim();
+    const jsonStart = cleanedResponse.indexOf('[');
+    const jsonEnd = cleanedResponse.lastIndexOf(']') + 1;
+    const jsonString = jsonStart !== -1 && jsonEnd !== -1 ? cleanedResponse.slice(jsonStart, jsonEnd) : '';
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error('Error parsing JSON:', error);
+    return [];
+  }
+};
+
+const logWorldHeritages = (heritages: WorldHeritage[]): void => {
+  heritages.forEach(heritage => {
+    console.log(`Name: ${heritage.name}`);
+    console.log(`Registered Year: ${heritage.registered_year}`);
+    console.log(`Description: ${heritage.description}`);
+    console.log('---');
+  });
+};
+
+const callChatGPT = async () => {
   try {
     const response = await axios.post(endpoint, data, { headers });
-    if (response.data && response.data.choices && response.data.choices.length > 0) {
-      let answer = response.data.choices[0].message.content;
-
-      // ログに生の応答を出力
-      console.log('Raw Answer:', answer);
-
-      // 有効なJSON形式を保証するために、余分な部分を取り除く
-      answer = answer.replace(/```json|```/g, '').trim();
-
-      // 有効なJSON形式を保証するために、必要な部分だけを抽出
-      const jsonStart = answer.indexOf('[');
-      const jsonEnd = answer.lastIndexOf(']') + 1;
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        answer = answer.slice(jsonStart, jsonEnd);
-      }
-
-      // ログに抽出後の応答を出力
-      console.log('Extracted JSON:', answer);
-
-      // JSON文字列をパースしてTypeScriptオブジェクトにマッピング
-      const worldHeritages: WorldHeritage[] = JSON.parse(answer);
+    if (response.data?.choices?.length > 0) {
+      const rawAnswer = response.data.choices[0].message.content;
+      console.log('Raw Answer:', rawAnswer);
+      const worldHeritages = parseJSONResponse(rawAnswer);
       console.log('World Heritages:', worldHeritages);
-
-      // 各世界遺産の詳細を出力
-      worldHeritages.forEach(heritage => {
-        console.log(`Name: ${heritage.name}`);
-        console.log(`Registered Year: ${heritage.registered_year}`);
-        console.log(`Description: ${heritage.description}`);
-        console.log('---');
-      });
+      logWorldHeritages(worldHeritages);
     } else {
       console.log('No answer received from ChatGPT.');
     }
   } catch (error) {
     console.error('Error calling ChatGPT:', error);
   }
-}
+};
 
 callChatGPT();
