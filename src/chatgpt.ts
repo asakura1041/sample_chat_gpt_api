@@ -25,14 +25,14 @@ class ChatGPTClient {
     };
   }
 
-  private createRequestData(): Record<string, any> {
+  private createRequestData(country: string): Record<string, any> {
     return {
       model: 'gpt-4o',
       messages: [
         {
           role: 'user',
           content: `
-          日本の世界遺産を以下のJSON形式で列挙してください。
+          「${country}」の世界遺産を以下のJSON形式で列挙してください。
 
           全ての世界遺産ではなく、代表的なものを5つのみ列挙してください。
 
@@ -67,12 +67,13 @@ class ChatGPTClient {
   }
 
   private logWorldHeritages(heritages: WorldHeritage[]): void {
+    console.log('------------------------------------------------------');
     heritages.forEach(heritage => {
-      console.log(`Name: ${heritage.name}`);
-      console.log(`Registered Year: ${heritage.registered_year}`);
-      console.log(`Type: ${heritage.type}`);
-      console.log(`Description: ${heritage.description}`);
-      console.log('----------------------');
+      console.log(`名称: ${heritage.name}`);
+      console.log(`登録年: ${heritage.registered_year}年`);
+      console.log(`種別: ${heritage.type}`);
+      console.log(`説明: ${heritage.description}`);
+      console.log('------------------------------------------------------');
     });
   }
 
@@ -80,21 +81,19 @@ class ChatGPTClient {
     fs.writeFileSync(filename, content, 'utf8');
   }
 
-  public async fetchWorldHeritages() {
+  public async fetchWorldHeritages(country: string) {
     try {
-      const data = this.createRequestData();
+      const data = this.createRequestData(country);
       const response = await axios.post(this.endpoint, data, { headers: this.headers });
       if (response.data?.choices?.length > 0) {
         const rawAnswer = response.data.choices[0].message.content;
-        console.log('Raw Answer:', rawAnswer);
         // 生の応答をファイルに書き込み
         this.writeToFile('api_response/rawAnswer.txt', rawAnswer);
 
         const worldHeritages = this.parseJSONResponse(rawAnswer);
-        console.log('World Heritages:', worldHeritages);
-
         // 抽出したJSONをファイルに書き込み
         this.writeToFile('api_response/worldHeritages.json', JSON.stringify(worldHeritages, null, 2));
+
         this.logWorldHeritages(worldHeritages);
       } else {
         console.log('No answer received from ChatGPT.');
@@ -108,6 +107,14 @@ class ChatGPTClient {
 // 環境変数からAPIキーを取得
 const apiKey = process.env.OPENAI_API_KEY;
 
-// ChatGPTClientのインスタンスを作成し、世界遺産を取得
+// コマンドライン引数から国名を取得
+const country = process.argv[2];
+
+if (!country) {
+  console.error('国名を指定してください。例: node script.js 日本');
+  process.exit(1);
+}
+
+// ChatGPTClientのインスタンスを作成し、指定された国の世界遺産を取得
 const chatGPTClient = new ChatGPTClient(apiKey!);
-chatGPTClient.fetchWorldHeritages();
+chatGPTClient.fetchWorldHeritages(country);
