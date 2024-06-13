@@ -46,12 +46,21 @@ const data = {
   max_tokens: 1000,
 };
 
+interface WorldHeritage {
+  name: string;
+  registered_year: number;
+  description: string;
+}
+
 async function callChatGPT() {
   try {
     const response = await axios.post(endpoint, data, { headers });
     if (response.data && response.data.choices && response.data.choices.length > 0) {
+      console.log('Response:', response.data.choices[0].message.content);
       const answer = response.data.choices[0].message.content;
-      console.log('ChatGPT Answer:', answer);
+      
+      const worldHeritages: WorldHeritage[] = JSON.parse(answer);
+      console.log('World Heritages:', worldHeritages);
     } else {
       console.log('No answer received from ChatGPT.');
     }
