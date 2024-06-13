@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as dotenv from 'dotenv';
+import * as fs from 'fs';
 
 dotenv.config();
 
@@ -7,6 +8,7 @@ interface WorldHeritage {
   name: string;
   registered_year: number;
   description: string;
+  type: string;
 }
 
 class ChatGPTClient {
@@ -29,33 +31,25 @@ class ChatGPTClient {
       messages: [
         {
           role: 'user',
-          content: `日本の世界遺産を以下のJSON形式で列挙してください。
+          content: `
+          日本の世界遺産を以下のJSON形式で列挙してください。
+
+          全ての世界遺産ではなく、代表的なものを5つのみ列挙してください。
+
           他の文章を含めず、JSONデータのみを返してください。
           [
             {
               "name": "世界遺産の名前",
               "registered_year": 登録年,
-              "description": "説明"
+              "type": "自然遺産 or 文化遺産",
+              "description": "説明" // 世界遺産の説明(場所、特徴、何が魅力かなどを詳細に記述してください)
             },
             ...
           ]
-          例:
-          [
-            {
-              "name": "屋久島",
-              "registered_year": 1993,
-              "description": "屋久島は、鹿児島県に位置する亜熱帯性の島で、その美しい森林と生態系で知られています。"
-            },
-            {
-              "name": "白神山地",
-              "registered_year": 1993,
-              "description": "白神山地は、青森県と秋田県にまたがる広大な山岳地帯で、ブナの原生林が広がっています。"
-            },
-            ...
-          ]`
+          `
         }
       ],
-      max_tokens: 1500,
+      max_tokens: 3000,
     };
   }
 
@@ -76,9 +70,14 @@ class ChatGPTClient {
     heritages.forEach(heritage => {
       console.log(`Name: ${heritage.name}`);
       console.log(`Registered Year: ${heritage.registered_year}`);
+      console.log(`Type: ${heritage.type}`);
       console.log(`Description: ${heritage.description}`);
       console.log('----------------------');
     });
+  }
+
+  private writeToFile(filename: string, content: string): void {
+    fs.writeFileSync(filename, content, 'utf8');
   }
 
   public async fetchWorldHeritages() {
@@ -88,8 +87,14 @@ class ChatGPTClient {
       if (response.data?.choices?.length > 0) {
         const rawAnswer = response.data.choices[0].message.content;
         console.log('Raw Answer:', rawAnswer);
+        // 生の応答をファイルに書き込み
+        this.writeToFile('api_response/rawAnswer.txt', rawAnswer);
+
         const worldHeritages = this.parseJSONResponse(rawAnswer);
         console.log('World Heritages:', worldHeritages);
+
+        // 抽出したJSONをファイルに書き込み
+        this.writeToFile('api_response/worldHeritages.json', JSON.stringify(worldHeritages, null, 2));
         this.logWorldHeritages(worldHeritages);
       } else {
         console.log('No answer received from ChatGPT.');
